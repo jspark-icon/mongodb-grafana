@@ -319,6 +319,10 @@ function runAggregateQuery( requestId, queryId, body, queryArgs, res, next )
               {
                 results = getTimeseriesResults(docs)
               }
+              else if ( queryArgs.type == 'delta' )
+              {
+                results = getTimeseriesResults(docs, true)
+              }
               else
               {
                 results = getTableResults(docs)
@@ -394,9 +398,10 @@ function getTableResults(docs)
   return results
 }
 
-function getTimeseriesResults(docs)
+function getTimeseriesResults(docs, delta)
 {
   var results = {}
+  var previous = {}
   for ( var i = 0; i < docs.length; i++)
   {
     var doc = docs[i]
@@ -411,8 +416,17 @@ function getTimeseriesResults(docs)
       dp = { 'target' : tg, 'datapoints' : [] }
       results[tg] = dp
     }
-    
-    results[tg].datapoints.push([doc['value'], doc['ts'].getTime()])
+    var value = doc['value']
+    if (delta) {
+      var previous_value = previous[tg]
+      previous[tg] = value
+      if (previous_value !== undefined) {
+        value = value - previous_value
+      } else {
+        continue
+      }
+    }
+    results[tg].datapoints.push([value, doc['ts'].getTime()])
   }
   return results
 }
